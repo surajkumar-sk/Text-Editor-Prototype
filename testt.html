@@ -1,0 +1,25 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <button id="btn">CLick</button>
+  <input id="inpu" oninput="handlechange(event)"/>
+  <script>
+    function handlechange(e){
+      console.log(e);
+    }
+    document.getElementById("btn").addEventListener("click",()=>{
+      document.getElementById("inpu").focus();
+      
+      console.log('here')
+    })
+  </script>
+</body>
+</html>
