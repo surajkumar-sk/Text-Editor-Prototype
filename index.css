@@ -233,3 +233,6 @@
   color: #ffffff;
   text-align: center;
 }
+.background_selected_text{
+  background-color: rgb(160, 159, 159);
+}
