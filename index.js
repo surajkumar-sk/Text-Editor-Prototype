@@ -9,12 +9,12 @@ let lineStart = {line:0,char:0};
 let lineEnd = {line:0,char:0}
 let testLine = document.getElementsByClassName('code_editor_line_measure')[0].childNodes[1];
 let charSize = (testLine.clientWidth)/40;
-
+let textSelectionInProgress = false;
 
 // ------ General Task Function ------------
 
 function focusOnCursor(){
-    // console.log("running")
+    // //console.log("running")
     let codeEditorCont = document.getElementById("code-editor-cont");
 
     let cursorTop = (lineNumber-1)*lineHeight;
@@ -26,9 +26,9 @@ function focusOnCursor(){
     let codeEditorContTop = codeEditorCont.scrollTop;
     let codeEditorContBottom = codeEditorCont.scrollTop + codeEditorCont.clientHeight - 18.2;
 
-    // console.log(cursorTop, codeEditorContTop, codeEditorContBottom);
+    // //console.log(cursorTop, codeEditorContTop, codeEditorContBottom);
     if(cursorLeft >= codeEditorContLeft && cursorLeft >= codeEditorContRight){
-        // console.log(cursorLeft - codeEditorCont.clientWidth + 10 + "px")
+        // //console.log(cursorLeft - codeEditorCont.clientWidth + 10 + "px")
         codeEditorCont.scrollLeft = cursorLeft - codeEditorCont.clientWidth + 5;
     } else if(cursorLeft <= codeEditorContLeft && cursorLeft <= codeEditorContRight){
         codeEditorCont.scrollLeft = cursorLeft - 35;
@@ -49,6 +49,8 @@ function focusOnCursor(){
 
 
 function removeSelected(ReplaceChar){
+    //console.log(lineStart,lineEnd)
+    storeCurrentState();
     let codeLines = document.getElementsByClassName("line");
     let topLineInSelected = lineStart.line > lineEnd.line ?
          lineEnd : (lineStart.line == lineEnd.line ? (lineStart.char > lineEnd.char ? lineEnd : lineStart) : lineStart);
@@ -61,6 +63,13 @@ function removeSelected(ReplaceChar){
     if(topLineInSelected.line <= 0){
         topLineInSelected.line = 1;
     }
+    if(topLineInSelected.char < 0){
+        topLineInSelected.char = 0;
+    }
+    if(bottomLineInSelected.char > codeLines[bottomLineInSelected.line-1].innerText.length+1){
+        bottomLineInSelected.char = codeLines[bottomLineInSelected.line-1].innerText.length+1;
+    }
+    //console.log("removing",bottomLineInSelected,topLineInSelected)
 
     if(codeLines[bottomLineInSelected.line - 1].innerText.length < bottomLineInSelected.char){
         bottomLineInSelected.char = codeLines[bottomLineInSelected.line - 1].innerText.length;
@@ -70,18 +79,19 @@ function removeSelected(ReplaceChar){
 
     let bottomLineUnSelectedText = codeLines[bottomLineInSelected.line - 1].innerText.slice(bottomLineInSelected.char, codeLines[bottomLineInSelected.line - 1].innerText.length);
     let topLineUnselectedText = codeLines[topLineInSelected.line - 1].innerText.slice(0,topLineInSelected.char);
-    // console.log(bottomLineUnSelectedText,topLineUnselectedText)
+    // //console.log(bottomLineUnSelectedText,topLineUnselectedText)
     codeLines[topLineInSelected.line -1].childNodes[0].innerHTML = "<pre>" + topLineUnselectedText + ReplaceChar + bottomLineUnSelectedText + "</pre>";
 
     let cursor = document.getElementsByClassName('code_editor_cursor')[0];
     
-    charNumber = topLineInSelected.char+1 + ReplaceChar.length;
+    charNumber = topLineInSelected.char > codeLines[topLineInSelected.line -1].childNodes[0].innerText.length - 1
+        ? codeLines[topLineInSelected.line -1].childNodes[0].innerText.length + 2 : topLineInSelected.char + 1 + ReplaceChar.length;
     lineNumber = topLineInSelected.line;
     cursor.style.left = (charNumber-1)*charSize + 35  + "px";
     cursor.style.top = (lineNumber-1)*lineHeight  + "px";
 
     // for(let i = topLineInSelected.line + 1; i<= bottomLineInSelected.line; i++){
-    //     // console.log(i);
+    //     // //console.log(i);
     //     removeLine(i);
     // }
     let numberOfLines = bottomLineInSelected.line - topLineInSelected.line;
@@ -92,10 +102,18 @@ function removeSelected(ReplaceChar){
 
     let input = document.getElementById('code_editor_cursor_input');
     input.focus();
+    textSelectionInProgress = false;
+}
 
+function deselectText(){
+    let SelectedLines  = document.querySelectorAll(".background_selected_text");
+    SelectedLines.forEach((line) => {
+        line.classList.remove('background_selected_text');
+    });
 }
 
 function SelectTextByMouse(){
+    //console.log("selecting",lineStart,lineEnd)
     let codeLines = document.getElementsByClassName("line");
     let cursor = document.getElementsByClassName('code_editor_cursor')[0];
     // remove selected text if any
@@ -113,7 +131,11 @@ function SelectTextByMouse(){
         if(lineStart.char > codeLines[lineStart.line - 1].innerText.length){
             lineStart.char = codeLines[lineStart.line - 1].innerText.length;
         }
+        //console.log(lineEnd,lineStart)
         // add the span tag around the text being selected.
+        if(lineEnd.char < 0){
+            lineEnd.char = 0;
+        }
         if(codeLines[lineEnd.line - 1].innerText.length >= lineEnd.char && lineEnd.char >= 0){
             
             codeLines[lineEnd.line - 1].childNodes[0].innerHTML = "<pre>" + codeLines[lineEnd.line - 1].innerText.slice(0,lineEnd.char) +
@@ -132,8 +154,9 @@ function SelectTextByMouse(){
             codeLines[i-1].childNodes[0].childNodes[0].classList.add("background_selected_text");
         }
     
-        charNumber = lineStart.char ;
-        lineNumber = lineStart.line;
+        
+        lineNumber = lineEnd.line > codeLines.length ? codeLines.length : lineEnd.line;
+        charNumber = lineEnd.char > codeLines[lineNumber - 1].innerText.length ? codeLines[lineNumber - 1].innerText.length : lineEnd.char + 1 ;
         cursor.style.left = (charNumber-1)*charSize + 35  + "px";
         cursor.style.top = (lineNumber-1)*lineHeight  + "px";
     }
@@ -144,6 +167,9 @@ function SelectTextByMouse(){
         }
         if(lineEnd.char > codeLines[lineEnd.line - 1].innerText.length){
             lineEnd.char = codeLines[lineEnd.line - 1].innerText.length;
+        }
+        if(lineStart.char < 0){
+            lineStart.char = 0;
         }
         
         if(codeLines[lineStart.line - 1].innerText.length >= lineStart.char && lineStart.char >= 0){
@@ -163,8 +189,8 @@ function SelectTextByMouse(){
         for(let i = lineStart.line + 1; i< lineEnd.line; i++){
             codeLines[i-1].childNodes[0].childNodes[0].classList.add("background_selected_text");
         }
-        charNumber = lineEnd.char ;
-        lineNumber = lineEnd.line;
+        lineNumber = lineEnd.line > codeLines.length ? codeLines.length : lineEnd.line; 
+        charNumber = lineEnd.char > codeLines[lineNumber - 1].innerText.length ? codeLines[lineNumber - 1].innerText.length : lineEnd.char + 1;
         cursor.style.left = (charNumber-1)*charSize + 35  + "px";
         cursor.style.top = (lineNumber-1)*lineHeight  + "px";
     } 
@@ -188,8 +214,8 @@ function SelectTextByMouse(){
         let endNonSpanText = codeLines[lineEnd.line - 1].childNodes[0].innerText.slice(endCharNum,codeLines[lineEnd.line - 1].childNodes[0].innerText.length);
         codeLines[lineEnd.line - 1].childNodes[0].innerHTML = "<pre>" + frontNonSpanText +"<span class='background_selected_text'>" + insideSpanText + "</span>" + endNonSpanText + "</pre>" ;
 
-        charNumber = lineEnd.char > lineStart.char ? endCharNum : frontCharNum+1 ;
-        lineNumber = lineEnd.line;
+        lineNumber = lineEnd.line > codeLines.length ? codeLines.length : lineEnd.line; 
+        charNumber = lineEnd.char > codeLines[lineNumber - 1].innerText.length ? codeLines[lineNumber - 1].innerText.length : lineEnd.char + 1 ;
         cursor.style.left = (charNumber-1)*charSize + 35  + "px";
         cursor.style.top = (lineNumber-1)*lineHeight  + "px";
     }
@@ -197,6 +223,7 @@ function SelectTextByMouse(){
     let input = document.getElementById('code_editor_cursor_input');
     input.focus();
     focusOnCursor();
+    textSelectionInProgress = true;
 }
 
 function removeLine(lineNumberToremove){
@@ -221,7 +248,7 @@ function changeVal(e){
 }
 
 // let lines = document.getElementsByClassName("line");
-// // console.log(lines)
+// // //console.log(lines)
 // lines = Array.prototype.slice.call(lines)
 // lines.map((line)=>{
 //     line.querySelector('input').addEventListener('focus',()=>{
@@ -256,10 +283,8 @@ setInterval(()=>{
 
 function getMousePosition(canvas, event) {
     // remove selected text if any
-    let SelectedLines  = document.querySelectorAll(".background_selected_text");
-    SelectedLines.forEach((line) => {
-        line.classList.remove('background_selected_text');
-    });
+    textSelectionInProgress = false;
+    deselectText();
 
     let rect = canvas.getBoundingClientRect();
     let x = event.clientX - rect.left - 35;
@@ -308,11 +333,15 @@ window.addEventListener("mouseup",(e) =>{
     clearInterval(codeEditorAutoScrollY)
 });
 
+window.onload = ()=>{
+    let input = document.getElementById('code_editor_cursor_input');
+    input.focus();
+}
 
 window.addEventListener("mousemove",(e) => {
     if(mouseDown && drag){
         let codeEditorCont = document.getElementById("code-editor-cont");
-        // console.log(codeEditorCont.offsetLeft);
+        // //console.log(codeEditorCont.offsetLeft);
         let codeEditorContTop = codeEditorCont.offsetTop;
         let codeEditorContBottom = codeEditorCont.offsetTop + codeEditorCont.clientHeight;
         let codeEditorContLeft = codeEditorCont.offsetLeft;
@@ -339,13 +368,12 @@ window.addEventListener("mousemove",(e) => {
             codeEditorAutoScrollX = setInterval(()=>{
                 codeEditorCont.scrollLeft = codeEditorCont.scrollLeft - 10;
                 let noOfCharTobeSelected = Math.floor(10/charSize);
-                console.log(lineEnd.char)
+                //console.log(lineEnd.char)
                 if(lineEnd.char >= 0){
                     lineEnd.char = lineEnd.char - noOfCharTobeSelected;
                     SelectTextByMouse();
                 }   
                 
-                console.log("moving left")
             },10);
             
         }
@@ -362,12 +390,12 @@ window.addEventListener("mousemove",(e) => {
                 }
 
             },100);
-            // console.log("moving down");
+            // //console.log("moving down");
         }
         if(e.clientY < codeEditorContTop){
             clearInterval(codeEditorAutoScrollX);
             clearInterval(codeEditorAutoScrollY);
-            // console.log("moving up")
+            // //console.log("moving up")
 
             codeEditorAutoScrollY = setInterval(() => {
                 codeEditorCont.scrollTop = codeEditorCont.scrollTop - (18.2);
@@ -380,7 +408,7 @@ window.addEventListener("mousemove",(e) => {
             },100);
         }
     }
-})
+});
 
 codeEditor.addEventListener("mouseup",(e)=>{
     mouseDown = false;
@@ -453,7 +481,7 @@ codeEditor.addEventListener("mousemove",(e)=>{
                 char:charNumber
             }
 
-            console.log(lineEnd)
+            //console.log(lineEnd)
             SelectTextByMouse();
         },1)
     }
@@ -477,11 +505,12 @@ codeEditorCont.addEventListener("scroll",()=>{
         
     },500)
     
-})
+});
 
 function handleInputChange(e){
     e.preventDefault();
-    // console.log(drag,e.data);
+    textSelectionInProgress = false;
+    // //console.log(drag,e.data);
     if(drag){
         if(e.data.length){
             removeSelected(e.data);
@@ -520,9 +549,16 @@ function handleInputChange(e){
 
 
 let textInputBox = document.getElementById("code_editor_cursor_input");
-
+textInputBox.addEventListener("blur",()=>{
+    console.log('inside event')
+    document.getElementsByClassName('code_editor_cursor')[0].style.width = "0px";
+});
+textInputBox.addEventListener("focus",()=>{
+    console.log('inside event')
+    document.getElementsByClassName('code_editor_cursor')[0].style.width = "1px";
+});
 textInputBox.addEventListener("keydown",(e)=>{
-    
+    //console.log(e)
     if(e.key == "Enter"){
         createNewLine();
     } else if(e.key == "Backspace"){
@@ -530,69 +566,190 @@ textInputBox.addEventListener("keydown",(e)=>{
     } else if(e.key == "Delete"){
         deleteNextLineOrRightText();
     } else if(e.key == "ArrowUp"){
-        cursorNavigationUp();
+        if(e.shiftKey){
+            e.preventDefault();
+            cursorNavigationSelectUp();
+        }else {
+            cursorNavigationUp();
+        }
+        
     } else if(e.key == "ArrowDown"){
-        cursorNavigationDowm();
+        if(e.shiftKey){
+            e.preventDefault();
+            cursorNavigationSelectDown();
+        }else {
+            cursorNavigationDowm();
+        }
+        
     } else if(e.key == "ArrowLeft"){
-        cursorNavigationLeft(e);
+        if(e.shiftKey){
+            cursorNavigationSelectLeft();
+        }else {
+            cursorNavigationLeft(e);
+        }
+        
     } else if(e.key == "ArrowRight"){
-        cursorNavigationRight();
+        if(e.shiftKey){
+            cursorNavigationSelectRight();
+        }else {
+            cursorNavigationRight();
+        }
+        
+    } else if(e.key == "c" || e.key == "C"){
+        
+        if(e.ctrlKey){
+            e.preventDefault();
+            // we need to copy selected text
+            copySelectedText();
+        }
+    } else if(e.key == "v" || e.key == "V"){
+        
+        if(e.ctrlKey){
+            e.preventDefault();
+            pasteCopiedText();
+        }
+    } else if(e.key == "z" || e.key == "Z"){
+        
+        if(e.ctrlKey){
+            e.preventDefault();
+            // we need to undo 
+            performUndo();
+        }
+    } else if(e.key == "y" || e.key == "Y"){
+        if(e.ctrlKey){
+            e.preventDefault();
+            performRedo();
+        }
+    } else if(e.key == "a" || e.key == "A"){
+        if(e.ctrlKey){
+            e.preventDefault();
+            selectAllText();
+        }
     }
 });
 
 function createNewLine(){
-    let activeline = document.getElementsByClassName("text")[lineNumber - 1];
-    let textVal = activeline.innerText;
+    storeCurrentState();
+    textSelectionInProgress = false;
+    if(drag){
+        let codeLines = document.getElementsByClassName("line");
 
-    // removing any text that was to the right of cursor after enter was pressed.
-    
-    if(textVal.slice(0,charNumber-1)){
-        activeline.innerHTML = "<pre>" + textVal.slice(0,charNumber-1) + "</pre>";
+        let topLineInSelected = lineStart.line > lineEnd.line ?
+         lineEnd : (lineStart.line == lineEnd.line ? (lineStart.char > lineEnd.char ? lineEnd : lineStart) : lineStart);
+        let bottomLineInSelected =  lineStart.line > lineEnd.line ? 
+            lineStart :(lineStart.line == lineEnd.line ? (lineStart.char > lineEnd.char ? lineStart : lineEnd) : lineEnd)  ;
+
+        if(bottomLineInSelected.line > codeLines.length){
+            bottomLineInSelected.line = codeLines.length;
+        } 
+        if(topLineInSelected.line < 1){
+            topLineInSelected.line = 1;
+        }
+        
+        let activeline = document.getElementsByClassName("text")[topLineInSelected.line - 1];
+        let textVal = activeline.innerText;
+        
+        
+
+        // create a new number in number line
+        let numberLineCont = document.getElementsByClassName('number_line_cont')[0];
+        let numberLines = document.getElementsByClassName('number_line');
+        let numberLine = document.createElement('div');
+        numberLine.classList.add("number_line");
+        let numberLineP = document.createElement('pre');
+        // because the number in HTML starts from 0. we just make the next line value to length
+        numberLineP.innerText = numberLines.length;
+        numberLine.append(numberLineP);
+        numberLineCont.appendChild(numberLine);
+        
+        removeSelected("");
+
+        // creating new text line
+        let codeLineDiv = document.createElement('div');
+        codeLineDiv.classList.add('line');
+        let codeTextDiv = document.createElement('div');
+        codeTextDiv.classList.add("text");
+        let codeTextP = document.createElement('pre');
+        //console.log(codeLines[lineNumber - 1].innerText.slice(charNumber - 1))
+        codeTextP.innerText =  codeLines[lineNumber - 1].innerText.slice(charNumber - 1);
+
+        codeTextDiv.append(codeTextP);
+        codeLineDiv.append(codeTextDiv);
+
+        let codeLinesCont = document.getElementsByClassName('code_editor_lines_container')[0];
+
+        codeLinesCont.insertBefore(codeLineDiv,codeLines[lineNumber]);
+        
+        lineNumber = lineNumber + 1;
+        // change cursor position
+        let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+        //console.log(lineNumber,(lineNumber-1)*lineHeight)
+        cursor.style.top = (lineNumber-1)*lineHeight  + "px";
+        cursor.style.left = 35  + "px";
+        charNumber = 1;
+
+        if(textVal.slice(0,topLineInSelected.char)){
+            //console.log(textVal.slice(0,topLineInSelected.char))
+            activeline.innerHTML = "<pre>" + textVal.slice(0,topLineInSelected.char) + "</pre>";
+        } else {
+            activeline.innerHTML = "<pre>" + "&#8203;" + "</pre>";
+        }
+        focusOnCursor();
+
+        drag=false;
     } else {
-        activeline.innerHTML = "<pre>" + "&#8203;" + "</pre>";
+        // removing any text that was to the right of cursor after enter was pressed.
+        let activeline = document.getElementsByClassName("text")[lineNumber - 1];
+        let textVal = activeline.innerText;
+        if(textVal.slice(0,charNumber-1)){
+            activeline.innerHTML = "<pre>" + textVal.slice(0,charNumber-1) + "</pre>";
+        } else {
+            activeline.innerHTML = "<pre>" + "&#8203;" + "</pre>";
+        }
+        // create a new number in number line
+        let numberLineCont = document.getElementsByClassName('number_line_cont')[0];
+        let numberLines = document.getElementsByClassName('number_line');
+        let numberLine = document.createElement('div');
+        numberLine.classList.add("number_line");
+        let numberLineP = document.createElement('pre');
+        // because the number in HTML starts from 0. we just make the next line value to length
+        numberLineP.innerText = numberLines.length;
+        numberLine.append(numberLineP);
+        numberLineCont.appendChild(numberLine);
+
+        // creating new text line
+
+        let codeLines = document.getElementsByClassName("line");
+
+        let codeLineDiv = document.createElement('div');
+        codeLineDiv.classList.add('line');
+        let codeTextDiv = document.createElement('div');
+        codeTextDiv.classList.add("text");
+        let codeTextP = document.createElement('pre');
+        codeTextP.innerText =  (charNumber > textVal.length) ? "" : textVal.slice(charNumber-1);
+
+        codeTextDiv.append(codeTextP);
+        codeLineDiv.append(codeTextDiv);
+
+        let codeLinesCont = document.getElementsByClassName('code_editor_lines_container')[0];
+
+        codeLinesCont.insertBefore(codeLineDiv,codeLines[lineNumber])
+        lineNumber = lineNumber + 1;
+
+        // change cursor position
+        let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+        
+        cursor.style.top = (lineNumber-1)*lineHeight  + "px";
+        cursor.style.left = 35  + "px";
+        charNumber = 1;
+
+        focusOnCursor();
     }
-    // create a new number in number line
-    let numberLineCont = document.getElementsByClassName('number_line_cont')[0];
-    let numberLines = document.getElementsByClassName('number_line');
-    let numberLine = document.createElement('div');
-    numberLine.classList.add("number_line");
-    let numberLineP = document.createElement('pre');
-    // because the number in HTML starts from 0. we just make the next line value to length
-    numberLineP.innerText = numberLines.length;
-    numberLine.append(numberLineP);
-    numberLineCont.appendChild(numberLine);
-
-    // creating new text line
-
-    let codeLines = document.getElementsByClassName("line");
-
-    let codeLineDiv = document.createElement('div');
-    codeLineDiv.classList.add('line');
-    let codeTextDiv = document.createElement('div');
-    codeTextDiv.classList.add("text");
-    let codeTextP = document.createElement('pre');
-    codeTextP.innerHTML =  (charNumber > textVal.length) ? "" : textVal.slice(charNumber-1);
-
-    codeTextDiv.append(codeTextP);
-    codeLineDiv.append(codeTextDiv);
-
-    let codeLinesCont = document.getElementsByClassName('code_editor_lines_container')[0];
-
-    codeLinesCont.insertBefore(codeLineDiv,codeLines[lineNumber])
-    lineNumber = lineNumber + 1;
-
-    // change cursor position
-    let cursor = document.getElementsByClassName('code_editor_cursor')[0];
-    
-    cursor.style.top = (lineNumber-1)*lineHeight  + "px";
-    cursor.style.left = 35  + "px";
-    charNumber = 1;
-
-    focusOnCursor()
 
 }
 
 function deleteCurrentLineOrLeftText(){
+    textSelectionInProgress = false
     let activeline = document.getElementsByClassName("text")[lineNumber - 1];
     let textVal = activeline.innerText;
     if(drag){
@@ -601,7 +758,7 @@ function deleteCurrentLineOrLeftText(){
     } else {
         // Removing the number line number and line along with text
         if(charNumber == 1 && lineNumber != 1){
-
+            storeCurrentState();
             removeLine(lineNumber);
             
             // moving the cursor up  and left
@@ -633,16 +790,18 @@ function deleteCurrentLineOrLeftText(){
 }
 
 function deleteNextLineOrRightText(){
+    textSelectionInProgress =false;
     let activeline = document.getElementsByClassName("text")[lineNumber - 1];
     let textVal = activeline.innerText;
     let codeLines = document.getElementsByClassName("line");
 
     if(drag){
-        console.log('inside drag')
+        //console.log('inside drag')
         removeSelected("");
         drag = false;
     } else {
         if((!(textVal.length) || charNumber == textVal.length+1) && lineNumber != codeLines.length){
+            storeCurrentState();
             let nextLineText = codeLines[lineNumber].innerText;
             removeLine(lineNumber+1);
             // copying any text the next line had and adding it to active line 
@@ -659,6 +818,7 @@ function deleteNextLineOrRightText(){
 }
 
 function cursorNavigationUp(){
+    deselectText();
     let codeLines = document.getElementsByClassName("line");
     if(lineNumber != 1){
         let cursor = document.getElementsByClassName('code_editor_cursor')[0];
@@ -676,15 +836,18 @@ function cursorNavigationUp(){
            
         }
     }
+    textSelectionInProgress = false
     focusOnCursor();
 }
 function cursorNavigationDowm(){
+    deselectText();
+    textSelectionInProgress = false
     let codeLines = document.getElementsByClassName("line");
     let numberLines = document.getElementsByClassName('number_line');
     if(lineNumber < numberLines.length -1){
         let cursor = document.getElementsByClassName('code_editor_cursor')[0];
         cursor.style.top = (lineNumber)*lineHeight +"px";
-        lineNumber = lineNumber + 1;
+        
         if(lineNumber < codeLines.length && charNumber > codeLines[lineNumber].innerText.length ){
             // if innerText is ZeroWidthSpace then cursor should be at the beginning
             if(codeLines[lineNumber-1].innerText == "\u200B"){
@@ -693,21 +856,19 @@ function cursorNavigationDowm(){
             } else {
                 charNumber = codeLines[lineNumber].innerText.length + 1;
                 cursor.style.left = (charNumber-1)*charSize + 35  + "px";
-            }
-            
-            
+            }            
         }
+        lineNumber = lineNumber + 1;
     }
     focusOnCursor();
 }
 
 function cursorNavigationLeft(e){
-   
+    deselectText();
+    textSelectionInProgress = false
     let codeLines = document.getElementsByClassName("line");
     let cursor = document.getElementsByClassName('code_editor_cursor')[0];
-    if(e.shiftKey){
-        // createSelection(codeLines[lineNumber-1].childNodes[1],1,2)
-    } 
+    
 
     if(charNumber > 1){
         charNumber = charNumber - 1;
@@ -730,7 +891,8 @@ function cursorNavigationLeft(e){
 }
 
 function cursorNavigationRight(){
-   
+    deselectText();
+    textSelectionInProgress = false
     let codeLines = document.getElementsByClassName("line");
     let cursor = document.getElementsByClassName('code_editor_cursor')[0];
     if(charNumber <= codeLines[lineNumber-1].innerText.length){
@@ -753,23 +915,383 @@ function cursorNavigationRight(){
     focusOnCursor();
 }
 
-
-// for initaiting the selection, rest of the future selection movement with shift
-// will be handled by browser
-function createSelection(field, start, end) {
-    if( field.createTextRange ) {
-        var selRange = field.createTextRange();
-        selRange.collapse(true);
-        selRange.moveStart('character', start);
-        selRange.moveEnd('character', end-start);
-        selRange.select();
-    } else if( field.setSelectionRange ) {
-        field.setSelectionRange(start, end);
-        field.focus();
-    } else if( field.selectionStart ) {
-        field.selectionStart = start;
-        field.selectionEnd = end;
-        field.focus();
+async function copySelectedText(){
+    let selectedLines = document.getElementsByClassName("background_selected_text");
+    let textToBeCopied = "";
+    for(let i =0; i<selectedLines.length;i++){
+        textToBeCopied +=  selectedLines[i].innerText + "\n" ;
     }
-    field.focus();
-} 
+    //console.log(textToBeCopied);
+    await navigator.clipboard.writeText(textToBeCopied);
+}
+
+async function pasteCopiedText(){
+    storeCurrentState();
+    textSelectionInProgress = false;
+    let codeLines = document.getElementsByClassName("line");
+    let selectedLines = document.getElementsByClassName("background_selected_text");
+    let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+    if(selectedLines.length){
+        removeSelected("");
+    }
+    let copiedText = await navigator.clipboard.readText();
+    
+    // splitting copied text at line break so i can insert it into different lines.
+    let copiedTextArray = copiedText.split("\n");
+    // remove the last empty character element because one \n will be in the end resulting in empty element
+    copiedTextArray.pop();
+    console.log(copiedText,copiedTextArray)
+    // for single line copy adding the text at the position of cursor;
+    //console.log(copiedTextArray)
+    if(copiedTextArray.length == 1){
+        let beforeCursorText =codeLines[lineNumber -1].innerText.slice(0,charNumber-1);
+        let afterCursorText = codeLines[lineNumber - 1].innerText.slice(charNumber - 1, codeLines[lineNumber - 1].innerText.length);
+        codeLines[lineNumber-1].childNodes[0].innerHTML = "<pre>" + beforeCursorText + copiedTextArray[0].replaceAll('\r','') + afterCursorText + "</pre>"
+        charNumber = beforeCursorText.length + copiedTextArray[0].length + 1;
+        cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+        
+    } else {
+        let beforeCursorText =codeLines[lineNumber -1].innerText.slice(0,charNumber-1);
+        let afterCursorText = codeLines[lineNumber - 1].innerText.slice(charNumber - 1, codeLines[lineNumber - 1].innerText.length);
+        // adding first line of copied text along with text before the cursor into first line
+        codeLines[lineNumber-1].childNodes[0].innerHTML = "<pre>" + beforeCursorText + copiedTextArray[0].replaceAll('\r','') + "</pre>";
+        // creating new new lines and adding copied text into the lines until last second line
+        let numberLineCont = document.getElementsByClassName('number_line_cont')[0];
+        let numberLines = document.getElementsByClassName('number_line');
+        let codeLinesCont = document.getElementsByClassName('code_editor_lines_container')[0];
+        for(let i = 1; i<copiedTextArray.length -1; i++){
+            // create a new number in number line
+            
+            let numberLine = document.createElement('div');
+            numberLine.classList.add("number_line");
+            let numberLineP = document.createElement('pre');
+            // because the number in HTML starts from 0. we just make the next line value to length
+            numberLineP.innerText = numberLines.length;
+            numberLine.append(numberLineP);
+            numberLineCont.appendChild(numberLine);
+
+            // creating new text line
+            
+            let codeLineDiv = document.createElement('div');
+            codeLineDiv.classList.add('line');
+            let codeTextDiv = document.createElement('div');
+            codeTextDiv.classList.add("text");
+            let codeTextP = document.createElement('pre');
+            codeTextP.innerText =  copiedTextArray[i].replaceAll('\r','');
+
+            codeTextDiv.append(codeTextP);
+            codeLineDiv.append(codeTextDiv);
+
+            
+            codeLinesCont.insertBefore(codeLineDiv,codeLines[lineNumber])
+            lineNumber = lineNumber + 1;
+        }
+
+        // create a new number in number line
+            
+        let numberLine = document.createElement('div');
+        numberLine.classList.add("number_line");
+        let numberLineP = document.createElement('pre');
+        // because the number in HTML starts from 0. we just make the next line value to length
+        numberLineP.innerText = numberLines.length;
+        numberLine.append(numberLineP);
+        numberLineCont.appendChild(numberLine);
+
+        // creating new text line
+        
+        let codeLineDiv = document.createElement('div');
+        codeLineDiv.classList.add('line');
+        let codeTextDiv = document.createElement('div');
+        codeTextDiv.classList.add("text");
+        let codeTextP = document.createElement('pre');
+        codeTextP.innerText =  copiedTextArray[copiedTextArray.length - 1].replaceAll('\r','') + afterCursorText;
+
+        codeTextDiv.append(codeTextP);
+        codeLineDiv.append(codeTextDiv);
+
+
+        codeLinesCont.insertBefore(codeLineDiv,codeLines[lineNumber])
+        lineNumber = lineNumber + 1;
+        let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+    
+        charNumber = copiedTextArray[copiedTextArray.length - 1].length;
+        cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+        cursor.style.top = (lineNumber-1)*lineHeight  + "px";
+
+    }
+    focusOnCursor();
+
+    
+    
+    //  creating final line adding last line of copied text along with text that was after the cursor in first line.
+
+}
+
+let undoStore = [];
+let redoStore = []
+
+function performUndo(){
+    textSelectionInProgress = false;
+    let codeLinesCont = document.getElementsByClassName("code_editor_lines_container")[0];
+    let numberLineCont = document.getElementsByClassName("number_line_cont")[0];
+    if(undoStore.length){    
+        redoStore.push({
+            lineNumber:lineNumber,
+            charNumber:charNumber,
+            lineEnd:lineEnd,
+            lineStart:lineStart,
+            data:codeLinesCont.innerHTML,
+            numberLineData:numberLineCont.innerHTML
+        });
+        if(undoStore.length){
+            lineNumber = undoStore[undoStore.length - 1].lineNumber;
+            charNumber = undoStore[undoStore.length - 1].charNumber;
+            lineEnd = undoStore[undoStore.length - 1].lineEnd;
+            lineStart = undoStore[undoStore.length - 1].lineStart;
+            codeLinesCont.innerHTML = undoStore[undoStore.length - 1].data;
+            numberLineCont.innerHTML = undoStore[undoStore.length - 1].numberLineData;
+            let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+            cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+            cursor.style.top = (lineNumber-1)*lineHeight  + "px";
+        }
+        
+        undoStore.pop();
+        focusOnCursor();
+    }
+}
+
+function performRedo(){
+    textSelectionInProgress = false;
+    let codeLinesCont = document.getElementsByClassName("code_editor_lines_container")[0];
+    let numberLineCont = document.getElementsByClassName("number_line_cont")[0];
+    if(redoStore.length){    
+        undoStore.push({
+            lineNumber:lineNumber,
+            charNumber:charNumber,
+            lineEnd:lineEnd,
+            lineStart:lineStart,
+            data:codeLinesCont.innerHTML,
+            numberLineData:numberLineCont.innerHTML
+        });
+        if(redoStore.length){
+            lineNumber = redoStore[redoStore.length - 1].lineNumber;
+            charNumber = redoStore[redoStore.length - 1].charNumber;
+            lineEnd = redoStore[redoStore.length - 1].lineEnd;
+            lineStart = redoStore[redoStore.length - 1].lineStart;
+            codeLinesCont.innerHTML = redoStore[redoStore.length - 1].data;
+            numberLineCont.innerHTML = redoStore[redoStore.length - 1].numberLineData;
+            let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+            cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+            cursor.style.top = (lineNumber-1)*lineHeight  + "px";
+        }
+
+        redoStore.pop();
+        focusOnCursor();
+    }
+    
+    
+}
+
+function storeCurrentState(){
+    let codeLinesCont = document.getElementsByClassName("code_editor_lines_container")[0];
+    let numberLineCont = document.getElementsByClassName("number_line_cont")[0];
+    redoStore = [];
+    if(undoStore.length > 20){
+        undoStore.shift();
+        undoStore.push({
+            lineNumber:lineNumber,
+            charNumber:charNumber,
+            lineEnd:lineEnd,
+            lineStart:lineStart,
+            data:codeLinesCont.innerHTML,
+            numberLineData:numberLineCont.innerHTML
+        })
+    } else {
+        undoStore.push({
+            lineNumber:lineNumber,
+            charNumber:charNumber,
+            lineEnd:lineEnd,
+            lineStart:lineStart,
+            data:codeLinesCont.innerHTML,
+            numberLineData:numberLineCont.innerHTML
+        });
+    }     
+}
+
+function cursorNavigationSelectUp(){
+    let codeLines = document.getElementsByClassName("line");
+    
+    if(lineNumber != 1){
+        let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+        cursor.style.top = (lineNumber - 2)*lineHeight +"px";
+        if(textSelectionInProgress){
+            lineEnd.line = lineEnd.line - 1
+        } else {
+            lineStart={
+                line : lineNumber,
+                char:charNumber - 1 
+            }
+            lineEnd={
+                line : lineNumber - 1,
+                char:charNumber - 1
+            }
+            textSelectionInProgress = true;
+        }
+        lineNumber = lineNumber - 1;
+        if(charNumber > codeLines[lineNumber-1].innerText.length ){
+            // if innerText is ZeroWidthSpace then cursor should be at the beginning
+            if(codeLines[lineNumber-1].innerText == "\u200B"){
+                charNumber = 1;
+                lineEnd.char = 1;
+                cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+            } else {
+                charNumber = codeLines[lineNumber-1].innerText.length + 1;
+                lineEnd.char = codeLines[lineNumber-1].innerText.length ;
+                cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+            }
+           
+        }
+        console.log(lineNumber)
+        drag = true;
+        focusOnCursor();
+        SelectTextByMouse();
+        console.log(lineNumber)
+    }
+    
+}
+
+function cursorNavigationSelectDown(){
+    
+    let codeLines = document.getElementsByClassName("line");
+    let numberLines = document.getElementsByClassName('number_line');
+    console.log('working',numberLines.length, lineNumber)
+    if(lineNumber < numberLines.length -1){
+        
+        let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+        cursor.style.top = (lineNumber)*lineHeight +"px";
+        if(textSelectionInProgress){
+            lineEnd.line = lineEnd.line + 1
+        } else {
+            lineStart={
+                line : lineNumber,
+                char:charNumber - 1 
+            }
+            lineEnd={
+                line : lineNumber + 1,
+                char:charNumber - 1
+            }
+            textSelectionInProgress = true;
+        }
+        if(lineNumber < codeLines.length && charNumber > codeLines[lineNumber].innerText.length ){
+            // if innerText is ZeroWidthSpace then cursor should be at the beginning
+            if(codeLines[lineNumber].innerText == "\u200B"){
+                charNumber = 1;
+                lineEnd.char = 0;
+                cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+            } else {
+                charNumber = codeLines[lineNumber].innerText.length + 1;
+                lineEnd.char = codeLines[lineNumber].innerText.length;
+                cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+            }            
+        }
+        lineNumber = lineNumber + 1;
+        drag = true;
+        focusOnCursor();
+        SelectTextByMouse();
+    }   
+    
+}
+function cursorNavigationSelectRight(){
+    let codeLines = document.getElementsByClassName("line");
+    let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+    if(charNumber <= codeLines[lineNumber-1].innerText.length){
+        if(!textSelectionInProgress){
+            lineStart={
+                line : lineNumber,
+                char:charNumber - 1 
+            }
+            lineEnd={
+                line : lineNumber,
+                char:charNumber - 1
+            }
+            textSelectionInProgress = true;
+        }
+        if(codeLines[lineNumber-1].innerText == "\u200B" && lineNumber != codeLines.length) {
+            charNumber = 1;
+            lineEnd.char = 1;
+            lineNumber = lineNumber + 1;
+            lineEnd.line = lineEnd.line + 1;
+            cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+            cursor.style.top = (lineNumber-1)*lineHeight +"px";
+        } else {
+            charNumber = charNumber + 1;
+            lineEnd.char = lineEnd.char + 1;
+            cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+        }
+       
+    } else if(charNumber == codeLines[lineNumber-1].innerText.length+1 && lineNumber != codeLines.length){
+        charNumber = 1;
+        lineEnd.char = 1;
+        lineNumber = lineNumber + 1;
+        lineEnd.line = lineEnd.line + 1;
+        cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+        cursor.style.top = (lineNumber-1)*lineHeight +"px";
+    }
+    drag = true;
+    focusOnCursor();
+    SelectTextByMouse();
+}
+function cursorNavigationSelectLeft(){
+    let codeLines = document.getElementsByClassName("line");
+    let cursor = document.getElementsByClassName('code_editor_cursor')[0];
+    if(!textSelectionInProgress){
+        lineStart={
+            line : lineNumber,
+            char:charNumber - 1 
+        }
+        lineEnd={
+            line : lineNumber,
+            char:charNumber - 1
+        }
+        textSelectionInProgress = true;
+    }
+    if(charNumber > 1){
+        charNumber = charNumber - 1;
+        lineEnd.char = charNumber - 1;
+        cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+    } else if(charNumber == 1 && lineNumber != 1){
+        if(codeLines[lineNumber-2].innerText == "\u200B"){
+            charNumber = 1;
+            lineEnd.char = 1;
+        } else {
+            charNumber = codeLines[lineNumber-2].innerText.length + 1;
+            lineEnd.char = codeLines[lineNumber-2].innerText.length;
+        }        
+        lineNumber = lineNumber - 1;
+        lineEnd.line = lineEnd.line - 1;
+        cursor.style.left = (charNumber-1)*charSize + 35  + "px";
+        cursor.style.top = (lineNumber-1)*lineHeight +"px";
+    }
+
+    drag = true;
+    focusOnCursor();
+    SelectTextByMouse();
+}
+
+function selectAllText(){
+    let codeLines = document.getElementsByClassName("line");
+    for(let i=0;i<codeLines.length;i++){
+        let textCont = codeLines[i].childNodes[0].childNodes[0];
+        textCont.classList.add("background_selected_text");
+    }
+    
+    lineStart = {
+        line:1,
+        char:0,
+    };
+    lineEnd = {
+        line:codeLines.length,
+        char:codeLines[codeLines.length - 1].innerText.length
+    }
+    drag = true;
+}
