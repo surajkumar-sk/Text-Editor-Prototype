@@ -919,7 +919,11 @@ async function copySelectedText(){
     let selectedLines = document.getElementsByClassName("background_selected_text");
     let textToBeCopied = "";
     for(let i =0; i<selectedLines.length;i++){
-        textToBeCopied +=  selectedLines[i].innerText + "\n" ;
+        if(selectedLines[i].innerText == "\u200B"){
+            textToBeCopied +=  "\n" ;
+        } else{
+            textToBeCopied +=  selectedLines[i].innerText + "\n" ;
+        }
     }
     //console.log(textToBeCopied);
     await navigator.clipboard.writeText(textToBeCopied);
@@ -939,11 +943,17 @@ async function pasteCopiedText(){
     // splitting copied text at line break so i can insert it into different lines.
     let copiedTextArray = copiedText.split("\n");
     // remove the last empty character element because one \n will be in the end resulting in empty element
-    copiedTextArray.pop();
+    // if array has no elements that means nothing has been copied
+    if(!copiedTextArray.length){
+        return;
+    }
     console.log(copiedText,copiedTextArray)
     // for single line copy adding the text at the position of cursor;
     //console.log(copiedTextArray)
     if(copiedTextArray.length == 1){
+        if(copiedTextArray[0] == "\n"){
+            return;
+        }
         let beforeCursorText =codeLines[lineNumber -1].innerText.slice(0,charNumber-1);
         let afterCursorText = codeLines[lineNumber - 1].innerText.slice(charNumber - 1, codeLines[lineNumber - 1].innerText.length);
         codeLines[lineNumber-1].childNodes[0].innerHTML = "<pre>" + beforeCursorText + copiedTextArray[0].replaceAll('\r','') + afterCursorText + "</pre>"
@@ -951,6 +961,9 @@ async function pasteCopiedText(){
         cursor.style.left = (charNumber-1)*charSize + 35  + "px";
         
     } else {
+        if(copiedTextArray[copiedTextArray.length] == "\n" || copiedTextArray[copiedTextArray.length] == ""){
+            copiedTextArray.pop();
+        }
         let beforeCursorText =codeLines[lineNumber -1].innerText.slice(0,charNumber-1);
         let afterCursorText = codeLines[lineNumber - 1].innerText.slice(charNumber - 1, codeLines[lineNumber - 1].innerText.length);
         // adding first line of copied text along with text before the cursor into first line

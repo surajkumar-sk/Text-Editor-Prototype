@@ -1,0 +1,11 @@
+folder name startts with capital letter and uses CamelCase, file names with small char and uses camelCase style;
+string in ""
+char in '';
+classNames in css wil have _ for seperation and id's will have - .
+
+
+
+
+
+change input id name from _ to -.
+didn't add onchange in input ad it through js eventlistener later.
